@@ -1,0 +1,10 @@
+name: club_plugin
+version: '1.0'
+main: me.callum.club_plugin.Club_plugin
+api-version: '1.21'
+
+commands:
+  createwallet:
+    description: initialise a wallet for the user
+  bal:
+    description: fetches the balance of the player's wallet

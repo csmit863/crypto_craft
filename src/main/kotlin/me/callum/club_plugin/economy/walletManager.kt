@@ -1,24 +1,73 @@
 package me.callum.club_plugin.economy
 
-class walletManager {
-}
+import org.bukkit.Bukkit
+import org.bukkit.entity.Player
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.entity.PlayerDeathEvent
+import org.bukkit.event.player.PlayerJoinEvent
+import java.util.*
 
-/*
+object WalletManager : Listener {
+    private val playerWallets = mutableMapOf<UUID, String>() // Maps Minecraft UUID to Ethereum address
+    private val balances = mutableMapOf<UUID, Double>() // ClubCoin balances
 
-when a new player joins, check if they have a wallet. if not, create one
-for them and give them a starting amount of coins.
+    fun hasWallet(playerUUID: UUID): Boolean {
+        return playerWallets.containsKey(playerUUID)
+    }
 
-if a player is killed by another player, transfer some of their coins.
-if a player dies otherwise, burn their coins.
+    fun createWallet(playerUUID: UUID) {
+        if (!hasWallet(playerUUID)) {
+            val ethAddress = generateEthereumAddress()
+            playerWallets[playerUUID] = ethAddress
+            balances[playerUUID] = 100.0 // Starting balance
 
-@EventHandler
-public void onPlayerJoin(PlayerJoinEvent event) {
-    Player player = event.getPlayer();
-    UUID playerUUID = player.getUniqueId();
+            val player = Bukkit.getPlayer(playerUUID)
+            player?.sendMessage("§aWallet created! Your address: $ethAddress")
+        }
+    }
 
-    if (!WalletManager.hasWallet(playerUUID)) {
-        WalletManager.createWallet(playerUUID);
+    fun getWallet(playerUUID: UUID): String? {
+        return playerWallets[playerUUID] // Returns Ethereum address
+    }
+
+    fun getBalance(playerUUID: UUID): Double {
+        return balances.getOrDefault(playerUUID, 0.0)
+    }
+
+    fun setBalance(playerUUID: UUID, amount: Double) {
+        balances[playerUUID] = amount
+    }
+
+    private fun generateEthereumAddress(): String {
+        // implement actual logic to generate an EVM wallet keypair
+        val randomHex = (1..40).map { "0123456789abcdef".random() }.joinToString("")
+        return "0x$randomHex" // Mock Ethereum address (replace with real generation logic if needed)
+    }
+
+    @EventHandler
+    fun onPlayerJoin(event: PlayerJoinEvent) {
+        val player = event.player
+        createWallet(player.uniqueId)
+    }
+
+    @EventHandler
+    fun onPlayerDeath(event: PlayerDeathEvent) {
+        val player = event.entity
+        val killer = player.killer
+
+        val lossAmount = getBalance(player.uniqueId) * 0.1 // 10% of coins lost
+
+        if (killer != null) {
+            // Transfer coins to the killer
+            val killerBalance = getBalance(killer.uniqueId)
+            setBalance(killer.uniqueId, killerBalance + lossAmount)
+            player.sendMessage("§cYou lost $lossAmount ClubCoins to ${killer.name}!")
+            killer.sendMessage("§aYou stole $lossAmount ClubCoins from ${player.name}!")
+        } else {
+            // Burn coins if death was not PvP
+            setBalance(player.uniqueId, getBalance(player.uniqueId) - lossAmount)
+            player.sendMessage("§cYou lost $lossAmount ClubCoins (burned).")
+        }
     }
 }
-
- */

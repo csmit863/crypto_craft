@@ -1,6 +1,7 @@
 package me.callum.club_plugin.economy
 
 import org.bukkit.Bukkit
+import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -8,7 +9,7 @@ import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerJoinEvent
 import java.util.*
 
-object WalletManager : Listener {
+object WalletManager : Listener  {
     private val playerWallets = mutableMapOf<UUID, String>() // Maps Minecraft UUID to Ethereum address
     private val balances = mutableMapOf<UUID, Double>() // ClubCoin balances
 
@@ -23,6 +24,7 @@ object WalletManager : Listener {
             balances[playerUUID] = 100.0 // Starting balance
 
             val player = Bukkit.getPlayer(playerUUID)
+
             player?.sendMessage("§aWallet created! Your address: $ethAddress")
         }
     }
@@ -42,6 +44,7 @@ object WalletManager : Listener {
     private fun generateEthereumAddress(): String {
         // implement actual logic to generate an EVM wallet keypair
         val randomHex = (1..40).map { "0123456789abcdef".random() }.joinToString("")
+
         return "0x$randomHex" // Mock Ethereum address (replace with real generation logic if needed)
     }
 

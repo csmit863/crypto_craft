@@ -6,3 +6,5 @@ api-version: '1.21'
 commands:
   bal:
     description: fetches the balance of the player's wallet
+  send:
+    description: send tokens to another player or crypto wallet

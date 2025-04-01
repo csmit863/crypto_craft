@@ -2,8 +2,9 @@ package me.callum.club_plugin.commands
 
 import me.callum.club_plugin.economy.WalletManager
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.event.ClickEvent
+import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.format.TextColor
-import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
@@ -29,9 +30,19 @@ class Bal : CommandExecutor {
             return true
         }
 
-        sender.sendMessage(Component.text("Wallet Address: $wallet").color(TextColor.color(0, 255, 255)))
+        // Clickable & Copyable Wallet Address
+        val walletComponent = Component.text("Wallet Address: ")
+            .color(TextColor.color(0, 255, 255))
+            .append(
+                Component.text(wallet)
+                    .color(TextColor.color(0, 255, 127))
+                    .hoverEvent(HoverEvent.showText(Component.text("Click to copy!").color(TextColor.color(255, 255, 0))))
+                    .clickEvent(ClickEvent.copyToClipboard(wallet))
+            )
 
-        // Start fetching the balance asynchronously
+        sender.sendMessage(walletComponent)
+
+        // Fetch and display balance asynchronously
         WalletManager.getBalance(target.uniqueId).thenAccept { balance ->
             sender.sendMessage(Component.text("${target.name}'s Balance: ${balance} Blockcoins").color(TextColor.color(0, 255, 0)))
         }.exceptionally { e ->
@@ -41,6 +52,4 @@ class Bal : CommandExecutor {
 
         return true
     }
-
-
 }

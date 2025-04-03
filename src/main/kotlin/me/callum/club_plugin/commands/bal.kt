@@ -10,7 +10,7 @@ import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
-class Bal : CommandExecutor {
+class Bal(private val walletManager: WalletManager) : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (sender !is Player) {
             sender.sendMessage(Component.text("Only players can check balances!").color(TextColor.color(255, 0, 0)))
@@ -24,7 +24,7 @@ class Bal : CommandExecutor {
             }
         } else sender
 
-        val wallet = WalletManager.getWallet(target.uniqueId)
+        val wallet = walletManager.getWallet(target.uniqueId)
         if (wallet == null) {
             sender.sendMessage(Component.text("${target.name} does not have a wallet!").color(TextColor.color(255, 0, 0)))
             return true
@@ -43,7 +43,7 @@ class Bal : CommandExecutor {
         sender.sendMessage(walletComponent)
 
         // Fetch and display balance asynchronously
-        WalletManager.getBalance(target.uniqueId).thenAccept { balance ->
+        walletManager.getBalance(target.uniqueId).thenAccept { balance ->
             sender.sendMessage(Component.text("${target.name}'s Balance: ${balance} Blockcoins").color(TextColor.color(0, 255, 0)))
         }.exceptionally { e ->
             sender.sendMessage(Component.text("Error fetching balance: ${e.message}").color(TextColor.color(255, 0, 0)))

@@ -9,7 +9,7 @@ import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
-class SendTokensCommand : CommandExecutor {
+class SendTokensCommand(private val walletManager: WalletManager) : CommandExecutor {
 
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (sender !is Player) {
@@ -59,7 +59,7 @@ class SendTokensCommand : CommandExecutor {
             }
 
             // Now send tokens to the player
-            WalletManager.sendTokens(senderUUID, targetPlayer.uniqueId.toString(), amount)
+            walletManager.sendTokens(senderUUID, targetPlayer.uniqueId.toString(), amount)
                 .thenAccept { success ->
                     if (success) {
                         sender.sendMessage(Component.text("Successfully sent $amount tokens to ${targetPlayer.name}.")

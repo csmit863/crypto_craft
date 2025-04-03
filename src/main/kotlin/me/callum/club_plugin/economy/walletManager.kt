@@ -1,5 +1,7 @@
 package me.callum.club_plugin.economy
 
+import com.google.common.reflect.TypeToken
+import com.google.gson.Gson
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.entity.Player
@@ -22,15 +24,51 @@ import org.web3j.crypto.TransactionEncoder
 import org.web3j.protocol.http.HttpService
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.utils.Convert
+import java.io.File
+import java.io.FileReader
+import java.io.FileWriter
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.util.concurrent.CompletableFuture
 
 
-object WalletManager : Listener  {
+class WalletManager(private val blockcoin: Blockcoin) : Listener  {
+    private val gson = Gson()
+    private val walletFile = File("plugins/ClubPlugin/wallets.json")
     private val playerWallets = mutableMapOf<UUID, String>() // Maps Minecraft UUID to Ethereum address
     private val playerPrivateKeys = mutableMapOf<UUID, String>() // Maps Minecraft UUID to Ethereum address
     private val balances = mutableMapOf<UUID, Double>() // ClubCoin balances
+
+    // todo: add 'export wallet' function which gives the user their private key
+    init {
+        loadWallets() // Load data on startup
+    }
+    private fun saveWallets() {
+        try {
+            val data = playerWallets.mapValues { (uuid, address) ->
+                mapOf("address" to address, "privateKey" to playerPrivateKeys[uuid])
+            }
+            walletFile.parentFile.mkdirs() // Ensure directory exists
+            FileWriter(walletFile).use { it.write(gson.toJson(data)) }
+            Bukkit.getLogger().info("Wallets saved successfully!")
+        } catch (e: Exception) {
+            Bukkit.getLogger().severe("Failed to save wallets: ${e.message}")
+        }
+    }
+    private fun loadWallets() {
+        if (!walletFile.exists()) return
+        try {
+            FileReader(walletFile).use { reader ->
+                val type = object : TypeToken<Map<String, Map<String, String>>>() {}.type
+                val data: Map<String, Map<String, String>> = gson.fromJson(reader, type)
+                playerWallets.putAll(data.mapKeys { UUID.fromString(it.key) }.mapValues { it.value["address"]!! })
+                playerPrivateKeys.putAll(data.mapKeys { UUID.fromString(it.key) }.mapValues { it.value["privateKey"]!! })
+                Bukkit.getLogger().info("Wallets loaded successfully!")
+            }
+        } catch (e: Exception) {
+            Bukkit.getLogger().severe("Failed to load wallets: ${e.message}")
+        }
+    }
 
     // will use web3 later to sign transactions
     val web3 = Web3j.build(HttpService("https://testnet.qutblockchain.club"))
@@ -45,7 +83,6 @@ object WalletManager : Listener  {
             val (ethAddress, privateKey) = generateEthereumAddress()
             playerWallets[playerUUID] = ethAddress
             playerPrivateKeys[playerUUID] = privateKey
-            balances[playerUUID] = 100.0 // Starting balance
 
             val player = Bukkit.getPlayer(playerUUID)
 
@@ -53,6 +90,7 @@ object WalletManager : Listener  {
             fundWallet(ethAddress)
             Bukkit.getLogger().info("Wallet created for player ${player?.name} with address: $ethAddress")
         }
+        saveWallets()
     }
 
     @OptIn(ExperimentalStdlibApi::class)
@@ -91,6 +129,8 @@ object WalletManager : Listener  {
                 val signedMessage = TransactionEncoder.signMessage(rawTx, credentials)
                 val hexValue = "0x" + signedMessage.toHexString()
 
+                Bukkit.getLogger().info("adding ether to new account...")
+
                 // Send transaction
                 val response = web3.ethSendRawTransaction(hexValue).send()
 
@@ -113,9 +153,7 @@ object WalletManager : Listener  {
     fun getBalance(playerUUID: UUID): CompletableFuture<BigDecimal> {
         val walletAddress = getWallet(playerUUID) ?: return CompletableFuture.failedFuture(Exception("No wallet found"))
 
-        return Blockcoin().getBalance(walletAddress).thenApply { balance ->
-            BigDecimal(balance).divide(BigDecimal.TEN.pow(18)) // Adjust based on token decimals
-        }
+        return blockcoin.getBalance(walletAddress)
     }
 
     fun sendTokens(fromPlayer: UUID, toPlayerOrAddress: String, amount: Double): CompletableFuture<Boolean> {
@@ -133,7 +171,7 @@ object WalletManager : Listener  {
             // It's an Ethereum address
             Bukkit.getLogger().info("sending tokens to ethereum address")
             Bukkit.getLogger().info(toPlayerOrAddress)
-            Blockcoin().sendTokens(fromWallet, toPlayerOrAddress, amount, privateKey)
+            blockcoin.sendTokens(fromWallet, toPlayerOrAddress, amount, privateKey)
         } else {
             // It's a player
             Bukkit.getLogger().info("sending tokens to player")
@@ -146,7 +184,7 @@ object WalletManager : Listener  {
                 val toWallet = playerWallets[toPlayer.uniqueId]
                 Bukkit.getLogger().info(toWallet)
                 if (toWallet != null) {
-                    Blockcoin().sendTokens(fromWallet, toWallet, amount, privateKey)
+                    blockcoin.sendTokens(fromWallet, toWallet, amount, privateKey)
                 } else {
                     CompletableFuture.completedFuture(false) // Receiver does not have a wallet
                 }

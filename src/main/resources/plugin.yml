@@ -8,3 +8,5 @@ commands:
     description: fetches the balance of the player's wallet
   send:
     description: send tokens to another player or crypto wallet
+  setToken:
+    description: (OPERATOR ONLY) set the token address for the server currency

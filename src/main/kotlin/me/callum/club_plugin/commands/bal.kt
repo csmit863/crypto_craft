@@ -44,7 +44,11 @@ class Bal(private val walletManager: WalletManager) : CommandExecutor {
 
         // Fetch and display balance asynchronously
         walletManager.getBalance(target.uniqueId).thenAccept { balance ->
-            sender.sendMessage(Component.text("${target.name}'s Balance: ${balance} Blockcoins").color(TextColor.color(0, 255, 0)))
+            val roundedBalance = String.format("%.5f", balance)
+            sender.sendMessage(
+                Component.text("${target.name}'s Balance: $roundedBalance Blockcoins")
+                    .color(TextColor.color(0, 255, 0))
+            )
         }.exceptionally { e ->
             sender.sendMessage(Component.text("Error fetching balance: ${e.message}").color(TextColor.color(255, 0, 0)))
             null

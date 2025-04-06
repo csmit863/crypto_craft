@@ -28,19 +28,32 @@ import java.math.RoundingMode
 
 class Blockcoin {
 
-    private val web3j: Web3j
-    private var contractAddress: String = "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82" // Replace with actual contract
+
+    // default values
+    public var contractAddress: String = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    public var factoryAddress: String = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+    public var rpcUrl: String = "https://testnet.qutblockchain.club"
+    public var web3j: Web3j = Web3j.build(HttpService(rpcUrl))
+
     private val decimals: Int = 18 // Change if your token has different decimal places
 
-    init {
-        val rpcUrl = "https://testnet.qutblockchain.club" // Replace with your Ethereum RPC URL
-        web3j = Web3j.build(HttpService(rpcUrl)) // Initialize Web3 connection
+    fun setWeb3(newRpcUrl: String) {
+        rpcUrl = newRpcUrl
+        web3j = Web3j.build(HttpService(newRpcUrl))
     }
 
-    fun setContractAddress(newAddress: String) {
-        contractAddress = newAddress
-        Bukkit.getLogger().info("Token contract address updated to: $newAddress")
+    /*
+    fun setContractAddress(newContractAddress: String) {
+        contractAddress = newContractAddress
+        Bukkit.getLogger().info("Token contract address updated to: $newContractAddress")
     }
+
+    fun setFactoryAddress(newFactoryAddress: String) {
+        factoryAddress = newFactoryAddress
+        Bukkit.getLogger().info("Factory address updated to: $newFactoryAddress")
+    }
+
+     */
 
     /**
      * Retrieves the ERC-20 token balance for a given Ethereum address.

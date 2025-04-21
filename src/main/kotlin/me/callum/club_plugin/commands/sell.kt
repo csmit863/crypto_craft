@@ -12,6 +12,8 @@ import org.bukkit.command.CommandSender
 import org.bukkit.command.TabCompleter
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.web3j.crypto.Keys
+import org.web3j.utils.Numeric
 import java.math.BigInteger
 
 
@@ -55,8 +57,9 @@ class SellItemsCommand(private val walletManager: WalletManager) : CommandExecut
         }
 
         val itemName = args[0] // The item to sell
-        val rawMaterialName = itemName.substringAfter(":").uppercase() // e.g., "DIAMOND"
-        val material = Material.matchMaterial(itemName)
+        val rawMaterialName = itemName.substringAfter(":").uppercase()
+        val material = Material.matchMaterial(rawMaterialName)
+
         if (material == null) {
             sender.sendMessage(Component.text("Unknown item type: $itemName").color(TextColor.color(255, 0, 0)))
             return true
@@ -90,24 +93,7 @@ class SellItemsCommand(private val walletManager: WalletManager) : CommandExecut
             return true
         }
 
-        // If enough, remove the exact amount manually
-        var amountToRemove = amount!!
-        val inventory = sender.inventory
 
-        for (slot in 0 until inventory.size) {
-            val item = inventory.getItem(slot)
-            if (item != null && item.type == material) {
-                if (item.amount <= amountToRemove) {
-                    amountToRemove -= item.amount
-                    inventory.setItem(slot, null)
-                } else {
-                    item.amount -= amountToRemove
-                    inventory.setItem(slot, item)
-                    amountToRemove = 0
-                }
-            }
-            if (amountToRemove <= 0) break
-        }
 
         // if the item is not a token, create the token and execute the mint function
         val name = material.key.key.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }
@@ -120,19 +106,63 @@ class SellItemsCommand(private val walletManager: WalletManager) : CommandExecut
 
         if (!alreadyExists) {
             val newAddress = walletManager.tokenizeItem.createAsset(name, symbol)
-            if (newAddress != null) {
-                sender.sendMessage(Component.text("✅ Created new token for $rawMaterialName").color(TextColor.color(0, 255, 0)))
-                // Optionally: save to assets.json here using a new helper
-                walletManager.tokenizeItem.saveAsset(name, symbol, newAddress)
-            } else {
+            if (newAddress == null) {
                 sender.sendMessage(Component.text("❌ Failed to create token for $rawMaterialName").color(TextColor.color(255, 0, 0)))
                 return true
             }
-        } else {
+
+            val checksummed = Keys.toChecksumAddress(newAddress.lowercase())
+            walletManager.tokenizeItem.saveAsset(name, symbol, checksummed)
+            sender.sendMessage(Component.text("✅ Created new token for $rawMaterialName").color(TextColor.color(0, 255, 0)))
+        }
+        else {
             sender.sendMessage(Component.text("ℹ️ Token already exists for $rawMaterialName").color(TextColor.color(200, 200, 0)))
             val assetAddress = walletManager.tokenizeItem.getAssetAddress(name, symbol)
             sender.sendMessage(Component.text("ℹ️ $rawMaterialName address: $assetAddress").color(TextColor.color(200, 200, 0)))
         }
+
+        // If enough, remove the exact amount manually
+        var amountToRemove = amount!!
+        val inventory = sender.inventory
+
+        // TODO: Ensure pair contract exists between Blockcoin and $symbol
+        // after removing the item from inventory, mint it to the user's wallet.
+        // then, ensure the token pair exists.
+        // walletManager.ensurePairExists("BLOCK", symbol)
+        // then get the price of the token
+        // then attempt to sell the asset
+        val walletAddress = walletManager.getWallet(senderUUID)
+        if (walletAddress == null) {
+            sender.sendMessage(Component.text("❌ You don't have a wallet yet. Please create one first.").color(TextColor.color(255, 0, 0)))
+            return true
+        }
+        val assetAddress = walletManager.tokenizeItem.getAssetAddress(name, symbol)
+        if (assetAddress == null) {
+            sender.sendMessage(Component.text("❌ Could not retrieve token address for $rawMaterialName").color(TextColor.color(255, 0, 0)))
+            return true
+        }
+        val txHash = walletManager.tokenizeItem.mintAsset(assetAddress, amountToRemove, walletAddress)
+        if (txHash == null) {
+            sender.sendMessage(Component.text("❌ Failed to mint tokenized asset to your wallet").color(TextColor.color(255, 0, 0)))
+        } else {
+            sender.sendMessage(Component.text("✅ Minted $amountToRemove $symbol tokens to $walletAddress").color(TextColor.color(0, 255, 0)))
+            sender.sendMessage(Component.text("Selling $amount $rawMaterialName at $price Blockcoin each.").color(TextColor.color(0, 255, 255)))
+            for (slot in 0 until inventory.size) {
+                val item = inventory.getItem(slot)
+                if (item != null && item.type == material) {
+                    if (item.amount <= amountToRemove) {
+                        amountToRemove -= item.amount
+                        inventory.setItem(slot, null)
+                    } else {
+                        item.amount -= amountToRemove
+                        inventory.setItem(slot, item)
+                        amountToRemove = 0
+                    }
+                }
+                if (amountToRemove <= 0) break
+            }
+        }
+
 
 
 

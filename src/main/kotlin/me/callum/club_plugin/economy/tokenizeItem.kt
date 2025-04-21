@@ -195,7 +195,7 @@ class TokenizeItem(private val blockcoin: Blockcoin) {
         // mint an asset to the user's wallet.
         val toAddress = walletAddress
         val mintFunction = Function(
-            "tokenizeItem",
+            "tokenizeItems",
             listOf(
                 Address(toAddress),
                 org.web3j.abi.datatypes.generated.Uint256(BigInteger.valueOf(amount.toLong()))
@@ -221,7 +221,6 @@ class TokenizeItem(private val blockcoin: Blockcoin) {
                 return null
             }
 
-            println(receipt.revertReason);
 
             println("✅ Successfully minted $amount tokens to $toAddress")
             transactionResponse.transactionHash

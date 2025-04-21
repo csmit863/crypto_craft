@@ -38,6 +38,7 @@ class WalletManager(private val blockcoin: Blockcoin) : Listener  {
     private val playerWallets = mutableMapOf<UUID, String>() // Maps Minecraft UUID to Ethereum address
     private val playerPrivateKeys = mutableMapOf<UUID, String>() // Maps Minecraft UUID to Ethereum address
     private val balances = mutableMapOf<UUID, Double>() // ClubCoin balances
+
     public var tokenizeItem: TokenizeItem = TokenizeItem(blockcoin)
     // todo: add 'export wallet' function which gives the user their private key
     init {

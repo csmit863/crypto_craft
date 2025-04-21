@@ -66,7 +66,6 @@ class SellItemsCommand(private val walletManager: WalletManager) : CommandExecut
         }
 
         val amount = args[1].toIntOrNull()
-        val price = args[2] // The price per item if desired
 
         if (material == null) {
             sender.sendMessage(Component.text("Unknown item type: $itemName").color(TextColor.color(255, 0, 0)))
@@ -105,20 +104,26 @@ class SellItemsCommand(private val walletManager: WalletManager) : CommandExecut
         val alreadyExists = walletManager.tokenizeItem.checkAssetExists(name, symbol)
 
         if (!alreadyExists) {
-            val newAddress = walletManager.tokenizeItem.createAsset(name, symbol)
+            val createAsset = walletManager.tokenizeItem.createAsset(name, symbol)
+
+            val newAddress = walletManager.tokenizeItem.getAssetAddress(name, symbol)
             if (newAddress == null) {
-                sender.sendMessage(Component.text("❌ Failed to create token for $rawMaterialName").color(TextColor.color(255, 0, 0)))
+                sender.sendMessage(Component.text("❌ Failed to create token for $rawMaterialName. Try again").color(TextColor.color(255, 0, 0)))
                 return true
             }
+            sender.sendMessage(Component.text(newAddress));
+            val checksummed = Keys.toChecksumAddress(newAddress.toString())
 
-            val checksummed = Keys.toChecksumAddress(newAddress.lowercase())
+
             walletManager.tokenizeItem.saveAsset(name, symbol, checksummed)
             sender.sendMessage(Component.text("✅ Created new token for $rawMaterialName").color(TextColor.color(0, 255, 0)))
-        }
-        else {
+        } else {
             sender.sendMessage(Component.text("ℹ️ Token already exists for $rawMaterialName").color(TextColor.color(200, 200, 0)))
             val assetAddress = walletManager.tokenizeItem.getAssetAddress(name, symbol)
-            sender.sendMessage(Component.text("ℹ️ $rawMaterialName address: $assetAddress").color(TextColor.color(200, 200, 0)))
+            val checksummed = Keys.toChecksumAddress(assetAddress.toString())
+
+            println(checksummed)
+            sender.sendMessage(Component.text("ℹ️ $rawMaterialName address: $checksummed").color(TextColor.color(200, 200, 0)))
         }
 
         // If enough, remove the exact amount manually
@@ -137,11 +142,17 @@ class SellItemsCommand(private val walletManager: WalletManager) : CommandExecut
             return true
         }
         val assetAddress = walletManager.tokenizeItem.getAssetAddress(name, symbol)
-        if (assetAddress == null) {
+        val checksummed = Keys.toChecksumAddress(assetAddress.toString())
+
+        if (checksummed == null) {
             sender.sendMessage(Component.text("❌ Could not retrieve token address for $rawMaterialName").color(TextColor.color(255, 0, 0)))
             return true
         }
-        val txHash = walletManager.tokenizeItem.mintAsset(assetAddress, amountToRemove, walletAddress)
+
+        val price = 1 // expected swap price needs to be fetched from the AMM.
+
+        sender.sendMessage("Minting asset at contract address $checksummed")
+        val txHash = walletManager.tokenizeItem.mintAsset(checksummed, amountToRemove, walletAddress)
         if (txHash == null) {
             sender.sendMessage(Component.text("❌ Failed to mint tokenized asset to your wallet").color(TextColor.color(255, 0, 0)))
         } else {
